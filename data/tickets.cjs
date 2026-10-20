@@ -1,0 +1,20 @@
+module.exports = [
+  {
+    "id": 1,
+    "title": "Projector does not start",
+    "description": "Room B12, power light is off.",
+    "status": "open"
+  },
+  {
+    "id": 2,
+    "title": "Keyboard has a broken key",
+    "description": "Lab A03, workstation 4.",
+    "status": "in_progress"
+  },
+  {
+    "id": 3,
+    "title": "Monitor is flickering",
+    "description": "Classroom C05, display issue.",
+    "status": "closed"
+  }
+];
