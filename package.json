@@ -1,0 +1,11 @@
+{
+  "name": "fuweb-helpdesk-starter",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "nodemon server.cjs"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
