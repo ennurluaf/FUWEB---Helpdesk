@@ -1,0 +1,6 @@
+# Store text files with LF line endings, so Windows and the Linux runners agree
+* text=auto
+
+# Leave repo plumbing out of every zip produced by git archive / Download ZIP
+.github        export-ignore
+.gitattributes export-ignore

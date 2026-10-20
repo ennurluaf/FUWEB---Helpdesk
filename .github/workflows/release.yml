@@ -1,0 +1,27 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*", "stage-*"]
+
+permissions:
+  contents: write           # needed to create releases
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Zip the tagged commit
+        run: |
+          git archive --format=zip \
+            --prefix="fuweb-helpdesk-$GITHUB_REF_NAME/" \
+            -o "fuweb-helpdesk-$GITHUB_REF_NAME.zip" "$GITHUB_REF_NAME"
+
+      - name: Create the GitHub release with the zip attached
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "fuweb-helpdesk-$GITHUB_REF_NAME.zip" \
+            --title "$GITHUB_REF_NAME" --generate-notes

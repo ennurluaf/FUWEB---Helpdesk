@@ -1,0 +1,44 @@
+name: Zip branch
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:        # adds a "Run workflow" button on the Actions tab
+
+permissions:
+  contents: read
+
+jobs:
+  zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build a zip from tracked files only
+        run: |
+          NAME="fuweb-helpdesk-${GITHUB_REF_NAME//\//-}"
+          echo "NAME=$NAME" >> "$GITHUB_ENV"
+          mkdir -p dist
+          # git archive packs only committed files, so ignored files
+          # (node_modules/, .env) cannot be included.
+          git archive --format=zip --prefix="$NAME/" -o "dist/$NAME.zip" HEAD
+
+      - name: Fail if node_modules or .env is tracked
+        run: |
+          if unzip -Z1 "dist/$NAME.zip" | grep -E '(^|/)(node_modules/|\.env$)'; then
+            echo "::error::node_modules or .env is committed. Run: git rm -r --cached <path>"
+            exit 1
+          fi
+          echo "Zip contents:"
+          unzip -Z1 "dist/$NAME.zip"
+
+      - name: Unpack so the artifact download is a single zip, not a zip inside a zip
+        run: |
+          mkdir -p upload
+          unzip -q "dist/$NAME.zip" -d upload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}
+          path: upload/
+          retention-days: 30

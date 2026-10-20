@@ -1,0 +1,25 @@
+name: Check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        if: hashFiles('package-lock.json') != ''
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies exactly as locked
+        if: hashFiles('package-lock.json') != ''
+        run: npm ci
+
+      - name: Syntax-check every JavaScript file
+        if: hashFiles('package-lock.json') != ''
+        run: git ls-files -z '*.js' '*.cjs' | xargs -0 -r -n1 node --check
