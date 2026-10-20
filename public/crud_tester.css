@@ -1,0 +1,118 @@
+/* ---------- CRUD tester (lesson 6) ---------- */
+.crud h3 {
+  margin: 0 0 4px;
+}
+.crud form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+.crud .crud-field {
+  min-width: 0;
+}
+.crud .crud-field--wide {
+  grid-column: 1 / -1;
+}
+.crud input,
+.crud select,
+.crud textarea {
+  width: 100%;
+  box-sizing: border-box;
+  color: #263548;
+  background: white;
+  border: 1px solid #cad4e0;
+  border-radius: 6px;
+}
+.crud input,
+.crud select {
+  height: 2.6em;
+}
+.crud textarea {
+  padding: 8px 12px;
+  font: inherit;
+  resize: vertical;
+}
+.crud input::placeholder,
+.crud textarea::placeholder {
+  color: #8a97a8;
+}
+.crud input:focus,
+.crud select:focus,
+.crud textarea:focus {
+  border-color: #20324a;
+  outline: 2px solid #cad4e0;
+  outline-offset: 1px;
+}
+.crud .crud-buttons {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+}
+.crud .crud-search {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+.crud button {
+  color: #20324a;
+  background: white;
+  border: 1px solid #cad4e0;
+  border-radius: 6px;
+  font-weight: 600;
+}
+.crud button:hover:not(:disabled) {
+  background: #edf1f6;
+  border-color: #20324a;
+}
+.crud button.crud-primary {
+  color: white;
+  background: #20324a;
+  border-color: #20324a;
+}
+.crud button.crud-primary:hover:not(:disabled) {
+  background: #2d4563;
+}
+.crud button:disabled {
+  opacity: 0.6;
+}
+.crud .crud-extra {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.crud .crud-extra button {
+  font-weight: 400;
+  font-size: 0.9em;
+}
+.crud .crud-response {
+  min-height: 3em;
+  max-height: 20rem;
+  margin: 16px 0 0;
+  overflow: auto;
+  background: white;
+  border: 1px solid #d5dee8;
+  border-left-width: 4px;
+}
+.crud .crud-response:empty::before {
+  content: "Response will appear here…";
+  color: #8a97a8;
+  font-family: system-ui, sans-serif;
+}
+.crud .crud-response.is-ok {
+  border-left-color: #1a7f37;
+}
+.crud .crud-response.is-error {
+  border-left-color: #c62828;
+}
+@media (max-width: 600px) {
+  .crud form {
+    grid-template-columns: 1fr;
+  }
+  .crud .crud-buttons {
+    grid-template-columns: 1fr 1fr;
+  }
+}

@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#20324a" />
+    <title>Campus helpdesk lessons</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/crud_tester.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Campus helpdesk: lessons 1–6</h1>
+      <p>
+        One running project, with each assignment kept in its own lesson
+        details.
+      </p>
+      <nav aria-label="Lessons">
+        <a href="#lesson-01">Lesson 1 · Request trace</a>
+        <a href="#lesson-02">Lesson 2 · App plan</a>
+        <a href="#lesson-03">Lesson 3 · Express API</a>
+        <a href="#lesson-04">Lesson 4 · Async browser</a>
+        <a href="#lesson-05">Lesson 5 · Data exchange</a>
+        <a href="#lesson-06">Lesson 6 · Database connection</a>
+      </nav>
+    </header>
+
+    <main>
+      <details class="lesson" id="lesson-01" aria-labelledby="lesson-01-title">
+        <summary id="lesson-01-title">
+          Lesson 1: Trace a full-stack request
+        </summary>
+        <p>
+          Follow one read request from the browser, through the Express route,
+          back to JSON, and into the page.
+        </p>
+        <ol>
+          <li>The browser starts <code>GET /api/tickets</code>.</li>
+          <li>
+            Express matches the collection route and reads the in-memory ticket
+            records.
+          </li>
+          <li>The server responds with an HTTP status and JSON.</li>
+          <li>Browser JavaScript renders the returned records as text.</li>
+        </ol>
+        <div class="activity">
+          <button id="lesson-01-load" type="button">
+            Trace GET /api/tickets
+          </button>
+          <p id="lesson-01-status" role="status" aria-live="polite">
+            Ready to trace the request.
+          </p>
+          <ul
+            id="lesson-01-records"
+            aria-label="Tickets returned by the request"
+          ></ul>
+          <pre
+            id="lesson-01-response"
+            aria-label="Request and response details"
+          ></pre>
+        </div>
+      </details>
+
+      <details class="lesson" id="lesson-02" aria-labelledby="lesson-02-title">
+        <summary id="lesson-02-title">
+          Lesson 2: Plan a small web application
+        </summary>
+        <p>
+          The read-only helpdesk plan starts with the users’ needs, the ticket
+          data shape, and the requests the interface will make.
+        </p>
+        <h3>Stories and success criteria</h3>
+        <ul>
+          <li>View the ticket list, including clear empty and error states.</li>
+          <li>
+            Open a ticket and read its id, title, description, and status.
+          </li>
+          <li>Understand when a requested ticket does not exist.</li>
+        </ul>
+        <h3>Ticket data dictionary</h3>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Field</th>
+              <th scope="col">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row"><code>id</code></th>
+              <td>Positive safe integer assigned by the server.</td>
+            </tr>
+            <tr>
+              <th scope="row"><code>title</code></th>
+              <td>Short, non-empty issue summary.</td>
+            </tr>
+            <tr>
+              <th scope="row"><code>description</code></th>
+              <td>Context that explains the issue.</td>
+            </tr>
+            <tr>
+              <th scope="row"><code>status</code></th>
+              <td>
+                <code>open</code>, <code>in_progress</code>, or
+                <code>closed</code>.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <h3>Planned interface-to-API requests</h3>
+        <div class="activity">
+          <label for="lesson-02-action">Choose an interface action</label>
+          <select id="lesson-02-action">
+            <option value="list">Show all tickets</option>
+            <option value="detail">Show ticket 1</option>
+            <option value="missing">Show an unknown ticket</option>
+          </select>
+          <pre id="lesson-02-contract" role="status" aria-live="polite"></pre>
+          <p>
+            The plan is read-only. Creating, editing, and deleting tickets
+            require later server-side work and are not enabled here.
+          </p>
+        </div>
+      </details>
+
+      <details class="lesson" id="lesson-03" aria-labelledby="lesson-03-title">
+        <summary id="lesson-03-title">
+          Lesson 3: Implement the Express API
+        </summary>
+        <p>
+          The shared server exposes the ticket routes below. This form sends
+          real requests, so Create, Update, Close and Delete change the
+          database.
+        </p>
+        <ul>
+          <li><code>GET /api/tickets</code> returns the collection.</li>
+          <li>
+            <code>GET /api/tickets/:id</code> returns one ticket or a JSON 404
+            error.
+          </li>
+          <li>
+            Request method and path together determine which route handles a
+            request.
+          </li>
+        </ul>
+        <div class="activity crud">
+          <form id="lesson-03-form" novalidate>
+            <div class="crud-field">
+              <label for="lesson-03-id">Ticket ID</label>
+              <input
+                id="lesson-03-id"
+                placeholder="e.g. 1 or 999999"
+                inputmode="numeric"
+                autocomplete="off"
+              />
+            </div>
+            <div class="crud-field">
+              <label for="lesson-03-ticket-status">Status (Update only)</label>
+              <select id="lesson-03-ticket-status">
+                <option value="">Keep current status</option>
+                <option value="open">open</option>
+                <option value="pending">pending</option>
+                <option value="resolved">resolved</option>
+                <option value="closed">closed</option>
+              </select>
+            </div>
+            <div class="crud-field crud-field--wide">
+              <label for="lesson-03-title-input">Title</label>
+              <input
+                id="lesson-03-title-input"
+                placeholder="At least 3 characters"
+                autocomplete="off"
+              />
+            </div>
+            <div class="crud-field crud-field--wide">
+              <label for="lesson-03-description">Description</label>
+              <textarea
+                id="lesson-03-description"
+                rows="2"
+                placeholder="What is the problem?"
+              ></textarea>
+            </div>
+
+            <div class="crud-buttons">
+              <button type="button" class="crud-primary" data-action="create">
+                Create
+              </button>
+              <button type="button" data-action="read">Read</button>
+              <button type="button" data-action="update">Update</button>
+              <button type="button" data-action="close">Close</button>
+              <button type="button" data-action="delete">Delete</button>
+              <button type="button" data-action="list">List all</button>
+            </div>
+          </form>
+          <p id="lesson-03-status" role="status" aria-live="polite">
+            Choose an API check.
+          </p>
+          <pre id="lesson-03-response" aria-label="API response"></pre>
+        </div>
+        <p>
+          HTTP methods describe intent: GET reads; POST creates (and here also
+          closes a ticket); PUT replaces; DELETE removes.
+        </p>
+      </details>
+
+      <details class="lesson" id="lesson-04" aria-labelledby="lesson-04-title">
+        <summary id="lesson-04-title">
+          Lesson 4: Display ticket status asynchronously
+        </summary>
+        <p>
+          Requests show their own loading, success, empty, and failure states.
+          Submitting a detail lookup does not reload the page.
+        </p>
+        <div class="activity">
+          <h3>Ticket detail</h3>
+          <form id="lesson-04-detail-form">
+            <label for="lesson-04-id">Ticket ID</label>
+            <input
+              id="lesson-04-id"
+              name="ticketId"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+            />
+            <button id="lesson-04-detail-submit" type="submit">
+              Load ticket
+            </button>
+            <button id="lesson-04-load" type="button">
+              Load / retry tickets
+            </button>
+          </form>
+          <p id="lesson-04-detail-status" role="status" aria-live="polite">
+            Enter a positive ticket ID.
+          </p>
+          <ul id="lesson-04-details" aria-live="polite"></ul>
+        </div>
+      </details>
+
+      <details class="lesson" id="lesson-05" aria-labelledby="lesson-05-title">
+        <summary id="lesson-05-title">
+          Lesson 5: JSON &amp; XML · Data exchange lab
+        </summary>
+        <p>Choose a fixture, then load it.</p>
+        <div class="activity">
+          <label for="fixture">Fixture </label>
+          <select id="fixture">
+            <option>ticket.json</option>
+            <option>ticket.xml</option>
+            <option>my-ticket.json</option>
+            <option>my-ticket.xml</option>
+            <option>broken.json</option>
+            <option>broken.xml</option>
+            <option>invalid.json</option>
+            <option>invalid.xml</option>
+            <option>missing.json</option>
+          </select>
+          <button id="load">Load ticket</button>
+          <p id="status" role="status">Ready.</p>
+          <pre id="output"></pre>
+        </div>
+      </details>
+
+      <details class="lesson" id="lesson-06" aria-labelledby="lesson-06-title">
+        <summary id="lesson-06-title">
+          Lesson 6: Test the API against PostgreSQL
+        </summary>
+        <p>
+          Each test sends a real request to the Express API, which runs the
+          stored procedures and functions in the <code>helpdesk</code>
+          database. A test passes when the HTTP status and the body match the
+          expected result.
+        </p>
+        <ul>
+          <li>
+            Tests that write data create their own tickets and remove them
+            afterwards, so the sample tickets stay unchanged.
+          </li>
+          <li>
+            The search test sends SQL injection strings. Because the API passes
+            the keyword as a query parameter (<code>$1</code>), PostgreSQL
+            treats it as plain text and nothing matches.
+          </li>
+          <li>
+            The last check forces a database connection failure and makes sure
+            the client only receives a generic error.
+          </li>
+        </ul>
+
+        <div
+          class="activity crud"
+          id="lesson-06"
+          aria-labelledby="lesson-06-title"
+        >
+          <h3 id="lesson-06-title">CRUD procedure tester</h3>
+          <p>
+            Run each test case by hand. Read, Create, Update and Close fill the
+            form with the ticket that comes back.
+          </p>
+          <form id="lesson-06-form" novalidate>
+            <div class="crud-field">
+              <label for="lesson-06-id">Ticket ID</label>
+              <input
+                id="lesson-06-id"
+                placeholder="e.g. 1 or 999999"
+                inputmode="numeric"
+                autocomplete="off"
+              />
+            </div>
+            <div class="crud-field">
+              <label for="lesson-06-status">Status (Update only)</label>
+              <select id="lesson-06-status">
+                <option value="">Keep current status</option>
+                <option value="open">open</option>
+                <option value="pending">pending</option>
+                <option value="resolved">resolved</option>
+                <option value="closed">closed</option>
+              </select>
+            </div>
+            <div class="crud-field crud-field--wide">
+              <label for="lesson-06-title-input">Title</label>
+              <input
+                id="lesson-06-title-input"
+                placeholder="At least 3 characters"
+                autocomplete="off"
+              />
+            </div>
+            <div class="crud-field crud-field--wide">
+              <label for="lesson-06-description">Description</label>
+              <textarea
+                id="lesson-06-description"
+                rows="2"
+                placeholder="What is the problem?"
+              ></textarea>
+            </div>
+
+            <div class="crud-buttons">
+              <button type="button" class="crud-primary" data-action="create">
+                Create
+              </button>
+              <button type="button" data-action="read">Read</button>
+              <button type="button" data-action="update">Update</button>
+              <button type="button" data-action="close">Close</button>
+              <button type="button" data-action="delete">Delete</button>
+              <button type="button" data-action="list">List all</button>
+            </div>
+
+            <div class="crud-field crud-field--wide">
+              <label for="lesson-06-search">Search keyword</label>
+              <div class="crud-search">
+                <input
+                  id="lesson-06-search"
+                  placeholder="e.g. printer"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+                <button type="button" data-action="search">Search</button>
+              </div>
+            </div>
+            <div class="crud-extra">
+              <button type="button" data-action="injection">
+                Use injection string
+              </button>
+              <button type="button" data-action="failure">
+                Test DB failure
+              </button>
+            </div>
+          </form>
+          <pre
+            class="crud-response"
+            id="lesson-06-response"
+            role="status"
+            aria-live="polite"
+          ></pre>
+        </div>
+        <p>
+          A status code alone does not prove a route works: a test also checks
+          the body, for example that a created ticket has a numeric ID and that
+          a deleted ticket returns an empty response.
+        </p>
+      </details>
+    </main>
+
+    <script type="module" src="lessons/app-00.js"></script>
+    <script type="module" src="lessons/app-01.js"></script>
+    <script type="module" src="lessons/app-02.js"></script>
+    <script type="module" src="lessons/app-03.js"></script>
+    <script type="module" src="lessons/app-04.js"></script>
+    <script type="module" src="lessons/app-05.js"></script>
+    <script type="module" src="lessons/app-06.js"></script>
+  </body>
+</html>

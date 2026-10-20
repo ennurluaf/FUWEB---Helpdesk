@@ -1,130 +1,164 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { tickets, allocateId } = require("../data/tickets.cjs");
+const pool = require('../db.cjs');
 
-const allowedStatuses = ["open", "in_progress", "closed"];
-const allowedFields = ["title", "description", "status"];
+// The table is "Ticket" with pk_ticket; the API keeps exposing it as `id`.
+const COLUMNS = 'pk_ticket AS id, title, description, status';
 
-function sendError(res, status, code, message, details) {
-  const error = { code, message };
-  if (details && details.length) error.details = details;
-  return res.status(status).json({ error });
+const STATUSES = ['open', 'pending', 'resolved', 'closed'];
+
+// Result codes of the stored procedures -> HTTP status.
+const HTTP_STATUS = {
+  NOT_FOUND: 404,
+  INVALID_TITLE: 400,
+  INVALID_DESCRIPTION: 400,
+  INVALID_STATUS: 400,
+  INVALID_TRANSITION: 409,
+  TICKET_CLOSED: 409,
+  NOT_CLOSED: 409
+};
+
+const MESSAGES = {
+  NOT_FOUND: 'Ticket not found',
+  INVALID_TITLE: 'Title must be at least 3 characters',
+  INVALID_DESCRIPTION: 'Description is required',
+  INVALID_STATUS: 'Status must be open, pending, resolved or closed',
+  INVALID_TRANSITION: 'This status change is not allowed',
+  TICKET_CLOSED: 'Closed tickets cannot be edited, reopen it first',
+  NOT_CLOSED: 'Only closed tickets can be deleted'
+};
+
+function sendError(res, status, code, message) {
+  return res.status(status).json({ error: { code, message } });
 }
 
-function parseId(req, res) {
-  // Route parameters arrive as strings. Our contract requires a positive integer.
+/** Sends the error that matches a procedure result code, e.g. 'NOT_FOUND' -> 404. */
+function sendResultError(res, result) {
+  const code = result === 'NOT_FOUND' ? 'TICKET_NOT_FOUND' : result;
+  return sendError(res, HTTP_STATUS[result] || 400, code, MESSAGES[result] || result);
+}
+
+/** Wraps a route so a database error becomes a 500 instead of crashing the server. */
+const handle = (fn) => async (req, res) => {
+  try {
+    await fn(req, res);
+  } catch (err) {
+    console.error(err.message);
+    sendError(res, 500, 'DB_ERROR', 'Database error');
+  }
+};
+
+/** Route parameter -> positive integer, or null. */
+function ticketId(req) {
   const id = Number(req.params.id);
-  if (!Number.isSafeInteger(id) || id < 1) {
-    sendError(res, 400, "INVALID_ID", "Use a positive integer id");
-    return null;
-  }
-  return id;
+  return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-function findTicketOrRespond(req, res) {
-  const id = parseId(req, res);
-  if (id === null) return null;
-
-  const ticket = tickets.find(item => item.id === id);
-  if (!ticket) {
-    sendError(res, 404, "TICKET_NOT_FOUND", "Ticket not found");
-    return null;
-  }
-  return ticket;
+async function findTicket(id) {
+  const { rows } = await pool.query(`SELECT ${COLUMNS} FROM fn_getTicket($1)`, [id]);
+  return rows[0] || null;
 }
 
-function requireJson(req, res, next) {
-  // The API accepts JSON request bodies for POST and PUT.
-  const contentType = (req.get("content-type") || "")
-    .split(";")[0]
-    .trim()
-    .toLowerCase();
-  if (contentType !== "application/json") {
-    return sendError(res, 415, "UNSUPPORTED_MEDIA_TYPE", "Use Content-Type: application/json");
+// GET /api/tickets                  all tickets
+// GET /api/tickets?status=open      only one status
+// GET /api/tickets?search=printer   keyword in title or description (can be combined with status)
+router.get('/', handle(async (req, res) => {
+  const { status, search } = req.query;
+  if (status && !STATUSES.includes(status)) return sendResultError(res, 'INVALID_STATUS');
+  if (search !== undefined) {
+    // The keyword is sent as a parameter ($1), never pasted into the SQL: no injection possible.
+    const { rows } = await pool.query(`SELECT ${COLUMNS} FROM fn_searchTickets($1, $2)`, [search, status || null]);
+    return res.status(200).json(rows);
   }
-  next();
+  const { rows } = status
+    ? await pool.query(`SELECT ${COLUMNS} FROM "Ticket" WHERE status::text = $1 ORDER BY pk_ticket`, [status])
+    : await pool.query(`SELECT ${COLUMNS} FROM "Ticket" ORDER BY pk_ticket`);
+  res.status(200).json(rows);
+}));
+
+// GET /api/tickets/test/db-failure   (only when ENABLE_TEST_ROUTES=true in .env)
+// Connects with a wrong password on purpose, to prove that a database failure
+// reaches the client as a generic error, without credentials or SQL details.
+if (process.env.ENABLE_TEST_ROUTES === 'true') {
+  router.get('/test/db-failure', handle(async () => {
+    const broken = new Pool({ password: 'deliberately-wrong-password', connectionTimeoutMillis: 3000 });
+    try {
+      await broken.query('SELECT 1');
+    } finally {
+      await broken.end();
+    }
+  }));
 }
-
-function validateTicket(body) {
-  const problems = [];
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
-    return ["The body must be a JSON object"];
-  }
-
-  const unexpected = Object.keys(body).filter(key => !allowedFields.includes(key));
-  if (unexpected.length) {
-    problems.push(`Unknown field(s): ${unexpected.join(", ")}`);
-  }
-  if (typeof body.title !== "string" || body.title.trim().length < 3 || body.title.trim().length > 100) {
-    problems.push("title must be text with 3 to 100 characters");
-  }
-  if (typeof body.description !== "string" || body.description.length > 1000) {
-    problems.push("description must be text with no more than 1000 characters");
-  }
-  if (!allowedStatuses.includes(body.status)) {
-    problems.push("status must be open, in_progress, or closed");
-  }
-  return problems;
-}
-
-function editableFields(body) {
-  return {
-    title: body.title.trim(),
-    description: body.description,
-    status: body.status
-  };
-}
-
-// GET /api/tickets or GET /api/tickets?status=open
-router.get("/", (req, res) => {
-  const status = req.query.status;
-  if (status !== undefined && (typeof status !== "string" || !allowedStatuses.includes(status))) {
-    return sendError(res, 400, "INVALID_STATUS", "Use status=open, in_progress, or closed");
-  }
-  const result = status ? tickets.filter(ticket => ticket.status === status) : tickets;
-  return res.status(200).json(result);
-});
 
 // GET /api/tickets/2
-router.get("/:id", (req, res) => {
-  const ticket = findTicketOrRespond(req, res);
-  if (ticket === null) return;
-  return res.status(200).json(ticket);
-});
+router.get('/:id', handle(async (req, res) => {
+  const id = ticketId(req);
+  if (!id) return sendError(res, 400, 'INVALID_ID', 'Ticket id must be a positive number');
 
-// POST /api/tickets
-router.post("/", requireJson, (req, res) => {
-  const problems = validateTicket(req.body);
-  if (problems.length) {
-    return sendError(res, 400, "VALIDATION_ERROR", "Invalid ticket data", problems);
+  const ticket = await findTicket(id);
+  if (!ticket) return sendError(res, 404, 'TICKET_NOT_FOUND', 'Ticket not found');
+  res.status(200).json(ticket);
+}));
+
+
+
+// POST /api/tickets   { title, description }   -> new tickets are always 'open'
+router.post('/', handle(async (req, res) => {
+  const { title, description } = req.body || {};
+  const { rows } = await pool.query('CALL sp_createTicket($1, $2, NULL, NULL)', [title, description]);
+  const { out_ticketid: id, out_result: result } = rows[0];
+
+  if (result !== 'CREATED') return sendResultError(res, result);
+  res.status(201).location(`/api/tickets/${id}`).json(await findTicket(id));
+}));
+
+// PUT /api/tickets/2   { title, description, status? }
+router.put('/:id', handle(async (req, res) => {
+  const id = ticketId(req);
+  if (!id) return sendError(res, 400, 'INVALID_ID', 'Ticket id must be a positive number');
+  const { title, description, status } = req.body || {};
+
+  const current = await findTicket(id);
+  if (!current) return sendError(res, 404, 'TICKET_NOT_FOUND', 'Ticket not found');
+
+  const editFields = async () => {
+    const { rows } = await pool.query('CALL sp_updateTicket($1, $2, $3, NULL)', [id, title, description]);
+    return rows[0].out_result === 'UPDATED' ? null : rows[0].out_result;
+  };
+  const changeStatus = async () => {
+    if (!status) return null;
+    const { rows } = await pool.query('CALL sp_updateTicketStatus($1, $2, NULL)', [id, status]);
+    return ['UPDATED', 'UNCHANGED'].includes(rows[0].out_result) ? null : rows[0].out_result;
+  };
+
+  // A closed ticket is read-only: reopen it first, then edit. Otherwise edit, then change status.
+  const steps = current.status === 'closed' ? [changeStatus, editFields] : [editFields, changeStatus];
+  for (const step of steps) {
+    const failure = await step();
+    if (failure) return sendResultError(res, failure);
   }
-  const ticket = { id: allocateId(), ...editableFields(req.body) };
-  tickets.push(ticket);
-  res.location(`/api/tickets/${ticket.id}`);
-  return res.status(201).json(ticket);
-});
+  res.status(200).json(await findTicket(id));
+}));
 
-// PUT /api/tickets/2 — complete replacement of editable fields
-router.put("/:id", requireJson, (req, res) => {
-  const ticket = findTicketOrRespond(req, res);
-  if (ticket === null) return;
+// POST /api/tickets/2/close
+router.post('/:id/close', handle(async (req, res) => {
+  const id = ticketId(req);
+  if (!id) return sendError(res, 400, 'INVALID_ID', 'Ticket id must be a positive number');
 
-  const problems = validateTicket(req.body);
-  if (problems.length) {
-    return sendError(res, 400, "VALIDATION_ERROR", "Invalid ticket data", problems);
-  }
-  Object.assign(ticket, editableFields(req.body));
-  return res.status(200).json(ticket);
-});
+  const { rows } = await pool.query('CALL sp_closeTicket($1, NULL)', [id]);
+  const result = rows[0].out_result;
+  if (result !== 'UPDATED' && result !== 'UNCHANGED') return sendResultError(res, result);
+  res.status(200).json(await findTicket(id));
+}));
 
-// DELETE /api/tickets/2
-router.delete("/:id", (req, res) => {
-  const ticket = findTicketOrRespond(req, res);
-  if (ticket === null) return;
+// DELETE /api/tickets/2   (only closed tickets)
+router.delete('/:id', handle(async (req, res) => {
+  const id = ticketId(req);
+  if (!id) return sendError(res, 400, 'INVALID_ID', 'Ticket id must be a positive number');
 
-  const index = tickets.findIndex(item => item.id === ticket.id);
-  tickets.splice(index, 1);
-  return res.status(204).end(); // 204 = no response body
-});
+  const { rows } = await pool.query('CALL sp_deleteTicket($1, NULL)', [id]);
+  if (rows[0].out_result !== 'DELETED') return sendResultError(res, rows[0].out_result);
+  res.status(204).end();
+}));
 
 module.exports = router;

@@ -1,130 +1,96 @@
-# FUWEB · Helpdesk API — Student Back End
+# FUWEB Campus Helpdesk
 
-A **finished, local Express REST API** for the practical lesson **“Test your Back End”**. Your job is **to test it**, not to implement it. No front end and no prewritten API request or test file are included.
+A small Express and PostgreSQL helpdesk project that brings six web-development lessons together in one browser-based learning app. The lessons cover request flow, application planning, a database-backed API, asynchronous browser behavior, JSON/XML data exchange, and manual API testing.
 
-## 1. Start the server
+## Requirements
 
-Requires **Node.js 18 or newer** and an internet connection **for the initial dependency installation**.
+- Node.js 18 or later
+- PostgreSQL 14 or later
+- PostgreSQL command-line tools (`psql`) or pgAdmin to initialize the database
 
-1. Extract the ZIP into a folder.
-2. Open that folder in **VS Code**.
-3. In the integrated terminal run:
+## Set up and run
 
-   ```bash
+1. Open a terminal in this project folder and install the Node dependencies:
+
+   ```sh
    npm install
-   npm start
    ```
 
-4. Use Postman, Bruno, Insomnia, Thunder Client or REST Client for VS Code.
-5. Base address: **http://localhost:3000**.
+2. Create a `.env` file in this folder with the connection details for your PostgreSQL server:
 
-The server runs on `127.0.0.1` (your own computer) by default. If port 3000 is already in use, choose a different one (for example `PORT=3001` on macOS/Linux or `$env:PORT=3001` in PowerShell).
+   ```dotenv
+   PGHOST=127.0.0.1
+   PGPORT=5432
+   PGDATABASE=helpdesk
+   PGUSER=your_postgres_user
+   PGPASSWORD=your_postgres_password
+   ```
 
-**Important:** Tickets live in memory. Changes made by POST, PUT and DELETE **disappear when you stop/restart the server**, which returns the three sample tickets. This makes the exercise repeatable. The server has **no authentication or database** and must not be deployed publicly.
+   Keep real credentials private; do not commit your `.env` file.
 
-## 2. API contract
+3. Initialize the database by running `helpdesk.sql` with a PostgreSQL administrator account. For example:
 
-All responses are JSON except **204 No Content**. For POST and PUT, set the request header `Content-Type: application/json` and send a **JSON object** in the body.
+   ```sh
+   psql -U postgres -f helpdesk.sql
+   ```
 
-| Method | Endpoint | Purpose | Success |
-|---|---|---|---|
-| GET | `/health` | Confirm the server is running | `200` and JSON |
-| GET | `/api/tickets` | List every ticket | `200` and JSON array |
-| GET | `/api/tickets?status=open` | List tickets with that status | `200` and JSON array |
-| GET | `/api/tickets/:id` | Retrieve one ticket | `200` and JSON object |
-| POST | `/api/tickets` | Create a ticket, ID assigned by server | `201`, JSON, and `Location` header |
-| PUT | `/api/tickets/:id` | Replace **all editable fields** of one ticket | `200` and updated JSON |
-| DELETE | `/api/tickets/:id` | Remove one ticket | `204` and **no body** |
+   **Warning:** this script drops and recreates the `helpdesk` database. Do not run it if you need to preserve data in an existing database with that name.
 
-The number after `/api/tickets/` is a **positive integer**. Unknown IDs do not match a record. The server does **not** implement PATCH.
+4. Start the server:
 
-### Required JSON fields for POST and PUT
+   ```sh
+   node server.cjs
+   ```
 
-- `title`: string with **3 to 100** non-whitespace characters (leading/trailing spaces are trimmed when stored).
-- `description`: string with **0 to 1000** characters.
-- `status`: exactly one of `open`, `in_progress`, `closed`.
-- **Do not send `id`** in the JSON body; the server controls it.
-- All three editable fields are **required**, even for PUT. Extra fields are rejected.
+5. Open [http://127.0.0.1:6767](http://127.0.0.1:6767). Express serves both the lesson page and the API; do not open `public/index.html` directly.
 
-Example **ticket representation** (for understanding the data model — create your own requests in your API client):
+Stop the server with Ctrl+C. The server listens on `127.0.0.1:6767`. It reads its PostgreSQL connection settings from `.env` or the process environment.
 
-```json
-{
-  "id": 1,
-  "title": "Projector does not start",
-  "description": "Room B12, power light is off.",
-  "status": "open"
-}
-```
+To enable the Lesson 6 database-failure check, add `ENABLE_TEST_ROUTES=true` to `.env` and restart the server.
 
-### Sending JSON with `curl.exe` in PowerShell
+## Lessons and features
 
-In PowerShell, quoting JSON directly in `curl.exe -d '...'` can result in the quotes being altered before curl sends the request. Build the JSON with `ConvertTo-Json` and pipe it to curl's standard input instead:
+Use the navigation at the top of the page to open each lesson:
 
-```powershell
-$body = @{
-  title = "x"
-  description = "Invalid title test"
-  status = "open"
-} | ConvertTo-Json -Compress
+1. **Trace a full-stack request** — follow a browser request through Express and inspect its response.
+2. **Plan a small web application** — explore user stories, the ticket data model, and planned API requests.
+3. **Implement the Express API** — use the interactive CRUD form to create, list, read, update, close, and delete tickets.
+4. **Display ticket status asynchronously** — load and retry the ticket list or look up a ticket without reloading the page. The interface handles loading, empty, not-found, invalid-input, malformed-response, and connection-failure states.
+5. **JSON & XML data exchange** — load sample JSON and XML ticket fixtures, parse them, and validate their structure and fields. Fixtures include malformed and invalid examples.
+6. **Test the API against PostgreSQL** — manually exercise CRUD procedures, status transitions, search, SQL-injection test strings, and generic database-error handling with an interactive request tester.
 
-$body | curl.exe -i -X POST http://127.0.0.1:3000/api/tickets `
-  -H "Content-Type: application/json" `
-  --data-binary "@-"
-```
+The first lessons introduce the app incrementally; the current shared API is backed by PostgreSQL, so create, update, close, and delete actions change database records.
 
-This sends valid JSON and should produce `400` with `VALIDATION_ERROR` because the title is only one character. Use the same body pattern with `-X PUT` and a ticket URL when testing replacement. The `@-` option tells curl to read the body from the PowerShell pipeline.
+## API
 
-### Expected error types
+All endpoints are mounted under `/api/tickets` and return JSON unless a successful delete has no response body.
 
-| HTTP status | `error.code` | Example cause |
-|---|---|---|
-| 400 | `INVALID_ID` | `/api/tickets/abc` |
-| 400 | `INVALID_STATUS` | Unknown status in query string |
-| 400 | `VALIDATION_ERROR` | Empty title, missing field, or wrong status |
-| 400 | `INVALID_JSON` | Malformed JSON text |
-| 404 | `TICKET_NOT_FOUND` | Valid ID with no record |
-| 404 | `ROUTE_NOT_FOUND` | Wrong route or method |
-| 415 | `UNSUPPORTED_MEDIA_TYPE` | POST/PUT without JSON Content-Type |
+| Method and path | Behavior |
+| --- | --- |
+| `GET /api/tickets` | List all tickets. |
+| `GET /api/tickets?status=open` | Filter by `open`, `pending`, `resolved`, or `closed`. |
+| `GET /api/tickets?search=printer` | Search ticket titles and descriptions. Search can be combined with the status filter. |
+| `GET /api/tickets/:id` | Read one ticket. |
+| `POST /api/tickets` | Create a ticket; new tickets start as `open`. Send `title` and `description` as JSON. |
+| `PUT /api/tickets/:id` | Update a ticket's title and description, and optionally its status. |
+| `POST /api/tickets/:id/close` | Close a ticket using the status workflow. |
+| `DELETE /api/tickets/:id` | Delete a ticket; only closed tickets can be deleted. |
 
-A validation error has `error.details`, which lists the failing rules. Other errors use this general shape:
+Ticket statuses are `open`, `pending`, `resolved`, and `closed`. The database enforces allowed status transitions; invalid input, missing tickets, and invalid transitions return structured JSON errors with appropriate HTTP status codes.
 
-```json
-{
-  "error": { "code": "TICKET_NOT_FOUND", "message": "Ticket not found" }
-}
-```
-
-## 3. Initial data
-
-When the server starts it has **three fictional tickets**:
-
-| ID | Title | Status |
-|---|---|---|
-| 1 | Projector does not start | open |
-| 2 | Wi-Fi disconnects frequently | in_progress |
-| 3 | Keyboard has missing keys | closed |
-
-New ticket IDs start at **4** after each fresh server start. A ticket deleted during a run remains absent until a restart.
-
-## 4. Student task
-
-**Do not change the server code.** Create your own requests in your chosen API client. Compare the **expected** and **actual** HTTP status, response headers, body, and any state change. Include **successful operations and intentional errors**.
-
-Submit **a test matrix and evidence** as directed in the lesson's practical assignment. There is intentionally **no ready-made Postman collection or `.http` test file** in this project.
-
-## 5. File structure
+## Project layout
 
 ```text
-FUWEB_Helpdesk_Backend_Studenten/
-├── server.cjs
-├── package.json
-├── README.md
-├── .gitignore
-├── data/
-│   └── tickets.cjs
-└── routes/
-    └── tickets.cjs
+db.cjs                         PostgreSQL connection pool
+helpdesk.sql                   Database schema, procedures, functions, and rules
+routes/
+  tickets.cjs                  Ticket API routes
+public/
+  index.html                   Lesson page and interactive controls
+  styles.css                   Lesson page styles
+  crud_tester.css              API tester styles
+  data-exchange/               JSON/XML lesson fixtures
+  lessons/                     Browser scripts for lessons 1–6
+notes/                         Lesson write-ups for lessons 1–6
+screenshots/                   At least one app screenshot for each lesson
 ```
-
-Helpful documentation: [Express](https://expressjs.com/en/starter/installing.html) · [Postman](https://www.postman.com/downloads/) · [REST Client for VS Code](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) · [Bruno](https://www.usebruno.com/downloads).

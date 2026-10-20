@@ -1,0 +1,139 @@
+:root {
+  color-scheme: light;
+  font:
+    17px/1.6 system-ui,
+    sans-serif;
+  color: #263548;
+  background: #f2f5f9;
+}
+body {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+}
+header {
+  padding: 24px;
+  color: white;
+  background: #20324a;
+  border-radius: 12px;
+}
+h1,
+h2,
+h3, summary {
+  line-height: 1.25;
+}
+summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+h1 {
+  margin: 0;
+}
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  /* margin: 20px 0; */
+}
+nav a {
+  padding: 8px 12px;
+  color: #20324a;
+  background: white;
+  border: 1px solid #cad4e0;
+  border-radius: 6px;
+}
+details.lesson {
+  margin: 20px 0;
+  padding: 24px;
+  background: white;
+  border: 1px solid #d5dee8;
+  border-radius: 12px;
+}
+.activity {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f6f8fb;
+  border-radius: 8px;
+}
+button,
+input,
+select {
+  font: inherit;
+  padding: 8px 12px;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: wait;
+}
+label {
+  display: block;
+  margin: 8px 0 4px;
+}
+li {
+  margin: 8px 0;
+}
+pre {
+  overflow-x: auto;
+  padding: 12px;
+  background: #edf1f6;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+code {
+  overflow-x: auto;
+  padding: 4px;
+  background: #d3d8dc;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+[role="status"] {
+  min-height: 1.6em;
+}
+.contract-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+.contract-card {
+  padding: 12px;
+  background: #f6f8fb;
+  border-radius: 8px;
+}
+.activity-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+  margin-top: 20px;
+}
+.activity-row .activity {
+  margin-top: 0;
+}
+@media (max-width: 600px) {
+  .activity-row {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  body {
+    padding: 12px;
+  }
+  details.lesson {
+    padding: 16px;
+  }
+  details.lesson button,
+  details.lesson input,
+  details.lesson select {
+    max-width: 100%;
+  }
+}
+
+.lesson-06-results .result-pass { color: #1a7f37; font-weight: 700; }
+.lesson-06-results .result-fail { color: #c62828; font-weight: 700; }
+.lesson-06-results .result-skip { color: #8a6d00; font-weight: 700; }
+.lesson-06-results td, .lesson-06-results th { padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+#lesson-06-log { max-height: 20rem; overflow: auto; white-space: pre-wrap; }
