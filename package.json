@@ -1,11 +1,14 @@
 {
-  "name": "fuweb-helpdesk-starter",
+  "name": "asynchronus-communication",
   "version": "1.0.0",
-  "private": true,
+  "description": "",
+  "main": "index.js",
   "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.cjs"
   },
-  "dependencies": {
-    "express": "^5.1.0"
-  }
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
 }
