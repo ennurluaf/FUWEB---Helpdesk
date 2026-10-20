@@ -1,9 +1,13 @@
 {
-  "name": "fuweb-helpdesk-starter",
+  "name": "fuweb-helpdesk-api",
   "version": "1.0.0",
+  "description": "FUWEB practice: test a ready-to-run Express REST API",
   "private": true,
+  "main": "server.cjs",
+  "engines": { "node": ">=18" },
   "scripts": {
-    "start": "node server.cjs"
+    "start": "nodemon server.cjs",
+    "dev": "node --watch server.cjs"
   },
   "dependencies": {
     "express": "^5.1.0"

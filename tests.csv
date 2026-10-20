@@ -1,0 +1,12 @@
+METHOD,URL,BODY
+GET,http://127.0.0.1:3000/api/tickets,
+GET,http://127.0.0.1:3000/api/tickets/1,
+GET,http://127.0.0.1:3000/api/tickets/999,
+POST,http://127.0.0.1:3000/api/tickets,"{""title"":""Printer Broken"",""description"":""Cannot print""}"
+POST,http://127.0.0.1:3000/api/tickets,"{}"
+PUT,http://127.0.0.1:3000/api/tickets/1,"{""title"":""Updated Title"",""description"":""Updated Description""}"
+PUT,http://127.0.0.1:3000/api/tickets/999,"{""title"":""Updated Title""}"
+DELETE,http://127.0.0.1:3000/api/tickets/1,
+DELETE,http://127.0.0.1:3000/api/tickets/999,
+GET,http://127.0.0.1:3000/api/ticket/1,
+POST,http://127.0.0.1:3000/api/tickets,"{""title"":""Final Test"",""description"":""Valid ticket""}"

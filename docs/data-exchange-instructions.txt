@@ -1,6 +1,0 @@
-Copy public/data-exchange into the public folder of your existing Express project.
-Your project must serve public using express.static before its 404 handler.
-Start that server with its existing command. Open http://localhost:3000/data-exchange/ (use your actual port).
-Do not open index.html through file://. No POST or XML API endpoint is required.
-Edit app.js. Fixtures named broken or invalid are intentionally incorrect; preserve them for testing.
-missing.json intentionally does not exist.
